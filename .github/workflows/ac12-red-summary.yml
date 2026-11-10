@@ -1,0 +1,36 @@
+name: AC-12 summary and artifacts on a red gate
+# The gate is red; the job summary is still written and the reports artifact still uploaded.
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  broken:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: mcp
+        continue-on-error: true
+        uses: plune-ai/eval-action/mcp@v1
+        with:
+          server-command: node src/server.js broken
+          comment: 'false'
+          artifact-name: ac12-broken
+      - name: Red, and the summary is there
+        env:
+          OUTCOME: ${{ steps.mcp.outcome }}
+        run: |
+          set -eu
+          echo "outcome=$OUTCOME"
+          test "$OUTCOME" = failure
+          cat "$RUNNER_TEMP"/_runner_file_commands/step_summary_* | grep -F '### MCP lint'
+      - name: Job summary as written
+        if: always()
+        run: |
+          for f in "$RUNNER_TEMP"/_runner_file_commands/step_summary_*; do
+            if [ -s "$f" ]; then echo "== $(basename "$f")"; cat "$f"; fi
+          done

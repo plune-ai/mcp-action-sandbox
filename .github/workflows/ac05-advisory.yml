@@ -1,0 +1,54 @@
+name: AC-5 fail-on never
+# Advisory: green on a broken server; on a server with no tools green, with a warning and measured=false.
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  broken:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: mcp
+        uses: plune-ai/eval-action/mcp@v1
+        with:
+          server-command: node src/server.js broken
+          fail-on: never
+          comment: 'false'
+          artifact-name: ac05-broken
+      - name: Green although the server is broken
+        env:
+          OUTCOME: ${{ steps.mcp.outcome }}
+          EXITS: ${{ steps.mcp.outputs.check-exit }}/${{ steps.mcp.outputs.lint-exit }}
+        run: |
+          set -eu
+          echo "outcome=$OUTCOME exits=$EXITS"
+          test "$OUTCOME" = success
+          test "$EXITS" = 1/1
+
+  empty:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: mcp
+        uses: plune-ai/eval-action/mcp@v1
+        with:
+          server-command: node src/server.js empty
+          fail-on: never
+          comment: 'false'
+          artifact-name: ac05-empty
+      - name: Green, but not measured
+        env:
+          OUTCOME: ${{ steps.mcp.outcome }}
+          MEASURED: ${{ steps.mcp.outputs.measured }}
+          LINT_EXIT: ${{ steps.mcp.outputs.lint-exit }}
+        run: |
+          set -eu
+          echo "outcome=$OUTCOME lint-exit=$LINT_EXIT measured=$MEASURED"
+          test "$OUTCOME" = success
+          test "$LINT_EXIT" = 3
+          test "$MEASURED" = false

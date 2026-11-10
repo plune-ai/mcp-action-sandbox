@@ -1,0 +1,44 @@
+name: AC-4 server with no tools
+# Red with exit 3, measured=false, the reports say the server lists no tools.
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  empty:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: mcp
+        continue-on-error: true
+        uses: plune-ai/eval-action/mcp@v1
+        with:
+          server-command: node src/server.js empty
+          comment: 'false'
+          artifact-name: ac04-empty
+      - name: Red, exit 3, not measured
+        env:
+          OUTCOME: ${{ steps.mcp.outcome }}
+          LINT_EXIT: ${{ steps.mcp.outputs.lint-exit }}
+          MEASURED: ${{ steps.mcp.outputs.measured }}
+          SUMMARY: ${{ steps.mcp.outputs.summary }}
+          REPORT_DIR: ${{ steps.mcp.outputs.report-dir }}
+        run: |
+          set -eu
+          echo "outcome=$OUTCOME lint-exit=$LINT_EXIT measured=$MEASURED summary=$SUMMARY"
+          test "$OUTCOME" = failure
+          test "$LINT_EXIT" = 3
+          test "$MEASURED" = false
+          grep -F 'not measured' <<< "$SUMMARY"
+          grep -F '**Exit 3**' "$REPORT_DIR/lint.md"
+          grep -F 'the server lists no tools' "$REPORT_DIR/lint.md"
+      - name: Job summary as written
+        if: always()
+        run: |
+          for f in "$RUNNER_TEMP"/_runner_file_commands/step_summary_*; do
+            if [ -s "$f" ]; then echo "== $(basename "$f")"; cat "$f"; fi
+          done

@@ -1,0 +1,35 @@
+name: AC-9 each command starts the server once
+# lint, check and diff, each writing four report forms: three connections in the server journal.
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  stdio:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: mcp
+        uses: plune-ai/eval-action/mcp@v1
+        with:
+          steps: lint,check,diff
+          server-command: node src/server.js clean --log ${{ runner.temp }}/server.log
+          snapshot-file: mcp-snapshot.json
+          comment: 'false'
+          artifact-name: ac09-stdio
+      - name: One initialize per command
+        env:
+          EXITS: ${{ steps.mcp.outputs.check-exit }}/${{ steps.mcp.outputs.lint-exit }}/${{ steps.mcp.outputs.diff-exit }}
+          REPORT_DIR: ${{ steps.mcp.outputs.report-dir }}
+        run: |
+          set -eu
+          cat "$RUNNER_TEMP/server.log"
+          echo "exits=$EXITS"
+          ls "$REPORT_DIR"
+          test "$EXITS" = 0/0/0
+          test "$(ls "$REPORT_DIR" | wc -l)" = 9
+          test "$(grep -c '"method":"initialize"' "$RUNNER_TEMP/server.log")" = 3

@@ -1,0 +1,33 @@
+name: AC-3 server that breaks the specification
+# Red; lint and check exit 1; the ::error annotations are in the step log.
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  broken:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: mcp
+        continue-on-error: true
+        uses: plune-ai/eval-action/mcp@v1
+        with:
+          server-command: node src/server.js broken
+          comment: 'false'
+          artifact-name: ac03-broken
+      - name: Red, exit 1 from both commands
+        env:
+          OUTCOME: ${{ steps.mcp.outcome }}
+          EXITS: ${{ steps.mcp.outputs.check-exit }}/${{ steps.mcp.outputs.lint-exit }}
+          MEASURED: ${{ steps.mcp.outputs.measured }}
+        run: |
+          set -eu
+          echo "outcome=$OUTCOME exits=$EXITS measured=$MEASURED"
+          test "$OUTCOME" = failure
+          test "$EXITS" = 1/1
+          test "$MEASURED" = true

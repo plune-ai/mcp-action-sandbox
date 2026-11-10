@@ -1,0 +1,54 @@
+name: PR comment
+# The one PR comment, updated in place. The server mode comes from the file pr-scenario (clean,
+# broken or empty), so pushes to one pull request walk through the cases. HTTP with a header from
+# env, so the comment can be searched for the fake credential too.
+on:
+  pull_request:
+    branches: [scenarios]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  SANDBOX_TOKEN: sandbox-fake-token-c6d72739f02a
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scenario
+        id: scenario
+        run: echo "mode=$(tr -d '[:space:]' < pr-scenario)" >> "$GITHUB_OUTPUT"
+      - name: Start the server
+        run: node src/http-server.js "$MODE" --echo-auth > "$RUNNER_TEMP/server.out" 2>&1 &
+        env:
+          MODE: ${{ steps.scenario.outputs.mode }}
+          PORT: '3000'
+          MCP_AUTH_TOKEN: ${{ env.SANDBOX_TOKEN }}
+      - id: mcp
+        continue-on-error: true
+        uses: plune-ai/eval-action/mcp@v1
+        with:
+          server-url: http://127.0.0.1:3000/mcp
+          headers-from-env: Authorization=SANDBOX_AUTHORIZATION
+          smoke: 'true'
+          artifact-name: pr-comment
+        env:
+          SANDBOX_AUTHORIZATION: Bearer ${{ env.SANDBOX_TOKEN }}
+      - name: Verdict as expected for the scenario
+        env:
+          MODE: ${{ steps.scenario.outputs.mode }}
+          OUTCOME: ${{ steps.mcp.outcome }}
+          MEASURED: ${{ steps.mcp.outputs.measured }}
+          SUMMARY: ${{ steps.mcp.outputs.summary }}
+        run: |
+          set -eu
+          echo "mode=$MODE outcome=$OUTCOME measured=$MEASURED summary=$SUMMARY"
+          case "$MODE" in
+            clean) test "$OUTCOME" = success; test "$MEASURED" = true ;;
+            broken) test "$OUTCOME" = failure; test "$MEASURED" = true ;;
+            empty) test "$OUTCOME" = failure; test "$MEASURED" = false ;;
+            *) exit 1 ;;
+          esac

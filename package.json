@@ -1,0 +1,11 @@
+{
+  "name": "mcp-action-sandbox",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "A dependency-free MCP test server for trying the plune-ai/eval-action/mcp GitHub Action.",
+  "scripts": {
+    "build": "node -e \"require('fs').cpSync('src', 'dist', { recursive: true })\""
+  }
+}

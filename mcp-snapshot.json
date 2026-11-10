@@ -1,0 +1,56 @@
+{
+  "capabilities": {
+    "tools": {}
+  },
+  "instructions": null,
+  "kind": "plune-mcp-snapshot",
+  "prompts": null,
+  "resourceTemplates": null,
+  "resources": null,
+  "schemaVersion": 2,
+  "server": {
+    "name": "mcp-action-sandbox",
+    "version": "1.0.0"
+  },
+  "tools": [
+    {
+      "description": "Empties the request log of this test server. Use it before a new measurement; do not use it while one is running.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "clear_log"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Returns the fixed status text of this test server. Use it to see that the server is up; do not use it to change anything.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "get_status"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Sets the request counter of this test server back to zero. Use it to start a count over; do not use it to read the count.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "reset_counter"
+    }
+  ],
+  "transport": "stdio"
+}

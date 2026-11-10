@@ -1,0 +1,30 @@
+name: AC-10 smoke calls only read-only tools
+# check --smoke: get_status (readOnlyHint true) is called; reset_counter (readOnlyHint false) and
+# clear_log (no annotations, so no readOnlyHint) are not.
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  stdio:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: mcp
+        uses: plune-ai/eval-action/mcp@v1
+        with:
+          steps: check
+          smoke: 'true'
+          server-command: node src/server.js clean --log ${{ runner.temp }}/server.log
+          comment: 'false'
+          artifact-name: ac10-stdio
+      - name: Only the read-only tool was called
+        run: |
+          set -eu
+          grep '"tools/call"' "$RUNNER_TEMP/server.log" || true
+          grep -q '"tool":"get_status"' "$RUNNER_TEMP/server.log"
+          if grep -qE '"tool":"(reset_counter|clear_log)"' "$RUNNER_TEMP/server.log"; then exit 1; fi

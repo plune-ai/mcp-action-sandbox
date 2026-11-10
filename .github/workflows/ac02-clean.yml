@@ -1,0 +1,84 @@
+name: AC-2 clean server, stdio and HTTP
+# Green, measured=true, every report form written, the job summary written.
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  # Not a secret: a fixed fake value, so the runs can be searched for it.
+  SANDBOX_TOKEN: sandbox-fake-token-c6d72739f02a
+
+jobs:
+  stdio:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: mcp
+        uses: plune-ai/eval-action/mcp@v1
+        with:
+          server-command: node src/server.js clean
+          comment: 'false'
+          artifact-name: ac02-stdio
+      - name: Green and measured
+        env:
+          MEASURED: ${{ steps.mcp.outputs.measured }}
+          EXITS: ${{ steps.mcp.outputs.check-exit }}/${{ steps.mcp.outputs.lint-exit }}
+          SUMMARY: ${{ steps.mcp.outputs.summary }}
+          REPORT_DIR: ${{ steps.mcp.outputs.report-dir }}
+        run: |
+          set -eu
+          echo "measured=$MEASURED exits=$EXITS summary=$SUMMARY"
+          test "$MEASURED" = true
+          test "$EXITS" = 0/0
+          for c in check lint; do for e in json xml md; do test -s "$REPORT_DIR/$c.$e"; done; done
+          head -n 1 "$REPORT_DIR/lint.md" | grep -qx '<!-- plune-mcp-lint -->'
+      # The job summary the action wrote, read back from the runner's step-summary files.
+      - name: Job summary as written
+        if: always()
+        run: |
+          for f in "$RUNNER_TEMP"/_runner_file_commands/step_summary_*; do
+            if [ -s "$f" ]; then echo "== $(basename "$f")"; cat "$f"; fi
+          done
+
+  http:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start the server
+        run: node src/http-server.js clean --log "$RUNNER_TEMP/server.log" > "$RUNNER_TEMP/server.out" 2>&1 &
+        env:
+          PORT: '3000'
+          MCP_AUTH_TOKEN: ${{ env.SANDBOX_TOKEN }}
+      - id: mcp
+        uses: plune-ai/eval-action/mcp@v1
+        with:
+          server-url: http://127.0.0.1:3000/mcp
+          wait: 30s
+          headers-from-env: Authorization=SANDBOX_AUTHORIZATION
+          comment: 'false'
+          artifact-name: ac02-http
+        env:
+          SANDBOX_AUTHORIZATION: Bearer ${{ env.SANDBOX_TOKEN }}
+      - name: Green and measured, no request refused
+        env:
+          MEASURED: ${{ steps.mcp.outputs.measured }}
+          EXITS: ${{ steps.mcp.outputs.check-exit }}/${{ steps.mcp.outputs.lint-exit }}
+          SUMMARY: ${{ steps.mcp.outputs.summary }}
+          REPORT_DIR: ${{ steps.mcp.outputs.report-dir }}
+        run: |
+          set -eu
+          echo "measured=$MEASURED exits=$EXITS summary=$SUMMARY"
+          test "$MEASURED" = true
+          test "$EXITS" = 0/0
+          for c in check lint; do for e in json xml md; do test -s "$REPORT_DIR/$c.$e"; done; done
+          if grep -q '"refused":true' "$RUNNER_TEMP/server.log"; then exit 1; fi
+      - name: Job summary as written
+        if: always()
+        run: |
+          for f in "$RUNNER_TEMP"/_runner_file_commands/step_summary_*; do
+            if [ -s "$f" ]; then echo "== $(basename "$f")"; cat "$f"; fi
+          done

@@ -1,0 +1,54 @@
+name: AC-6 server that does not start
+# A command that does not exist: red, exit 2, the reason in the step log.
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  missing-command:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: mcp
+        continue-on-error: true
+        uses: plune-ai/eval-action/mcp@v1
+        with:
+          server-command: does-not-exist-sandbox-cmd
+          steps: check
+          comment: 'false'
+          artifact-name: ac06-missing
+      - name: Red, exit 2, not measured
+        env:
+          OUTCOME: ${{ steps.mcp.outcome }}
+          CHECK_EXIT: ${{ steps.mcp.outputs.check-exit }}
+          MEASURED: ${{ steps.mcp.outputs.measured }}
+        run: |
+          set -eu
+          echo "outcome=$OUTCOME check-exit=$CHECK_EXIT measured=$MEASURED"
+          test "$OUTCOME" = failure
+          test "$CHECK_EXIT" = 2
+          test "$MEASURED" = false
+
+  # Observation, no assertion: a server that starts, writes to stderr and exits at once.
+  crash-on-start:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: mcp
+        continue-on-error: true
+        uses: plune-ai/eval-action/mcp@v1
+        with:
+          server-command: node src/server.js crash
+          steps: check
+          comment: 'false'
+          artifact-name: ac06-crash
+      - name: What the action reported
+        env:
+          OUTCOME: ${{ steps.mcp.outcome }}
+          CHECK_EXIT: ${{ steps.mcp.outputs.check-exit }}
+          MEASURED: ${{ steps.mcp.outputs.measured }}
+        run: echo "outcome=$OUTCOME check-exit=$CHECK_EXIT measured=$MEASURED"

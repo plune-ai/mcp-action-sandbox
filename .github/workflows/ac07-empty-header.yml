@@ -1,0 +1,60 @@
+name: AC-7 header variable empty, as on a fork pull request
+# The action stops with an error naming the variable before the server gets a single request.
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  SANDBOX_TOKEN: sandbox-fake-token-c6d72739f02a
+
+jobs:
+  missing-secret:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [unset-secret, bare-scheme]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start the server
+        run: node src/http-server.js clean --log "$RUNNER_TEMP/server.log" > "$RUNNER_TEMP/server.out" 2>&1 &
+        env:
+          PORT: '3000'
+          MCP_AUTH_TOKEN: ${{ env.SANDBOX_TOKEN }}
+      - name: The server is up
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/ || true)
+            if [ "$code" = 404 ]; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - id: mcp
+        continue-on-error: true
+        uses: plune-ai/eval-action/mcp@v1
+        with:
+          server-url: http://127.0.0.1:3000/mcp
+          headers-from-env: Authorization=SANDBOX_AUTHORIZATION
+          comment: 'false'
+          artifact-name: ac07-${{ matrix.case }}
+        env:
+          # This repository defines no secret of this name, so the expression gives an empty string.
+          SANDBOX_AUTHORIZATION: ${{ matrix.case == 'bare-scheme' && format('Bearer {0}', secrets.SANDBOX_NOT_SET) || secrets.SANDBOX_NOT_SET }}
+      - name: Red, not measured, no request reached the server
+        env:
+          OUTCOME: ${{ steps.mcp.outcome }}
+          MEASURED: ${{ steps.mcp.outputs.measured }}
+          SUMMARY: ${{ steps.mcp.outputs.summary }}
+        run: |
+          set -eu
+          echo "outcome=$OUTCOME measured=$MEASURED summary=$SUMMARY"
+          test "$OUTCOME" = failure
+          test "$MEASURED" = false
+          grep -F 'SANDBOX_AUTHORIZATION' <<< "$SUMMARY"
+          lines=$(cat "$RUNNER_TEMP/server.log" 2>/dev/null | wc -l)
+          echo "server journal lines: $lines"
+          test "$lines" = 0
