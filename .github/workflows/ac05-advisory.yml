@@ -28,7 +28,8 @@ jobs:
           set -eu
           echo "outcome=$OUTCOME exits=$EXITS"
           test "$OUTCOME" = success
-          test "$EXITS" = 1/1
+          # check exits 1 (its findings); lint takes fail-on never as its own threshold and exits 0.
+          test "$EXITS" = 1/0
 
   empty:
     runs-on: ubuntu-latest
