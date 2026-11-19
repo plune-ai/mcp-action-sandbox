@@ -1,0 +1,27 @@
+# .github/workflows/mcp-conformance.yml — a stdio server built in the job
+# The stdio example from https://docs.plune.ai/cli/guides/mcp-conformance/ ("In CI"), as written there.
+# Sandbox only: the `echo` line prints the exit code to the log.
+name: MCP conformance
+on:
+  pull_request:
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci && npm run build
+      - name: Check the server against the spec
+        run: |
+          code=0
+          npx -y @plune-ai/cli mcp conformance --out junit-xml=conformance.xml -- node dist/server.js || code=$?
+          echo "conformance exit code: $code"
+          # 0 passed, 3 not established: let both through; 1 a failed check and 2 a wrong run fail the job
+          if [ "$code" -eq 1 ] || [ "$code" -eq 2 ]; then exit "$code"; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mcp-conformance
+          path: conformance.xml
