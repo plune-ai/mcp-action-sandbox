@@ -1,0 +1,61 @@
+{
+  "kind": "plune-mcp-lock",
+  "lockVersion": 1,
+  "servers": {
+    "mcp-action-sandbox": {
+      "approvedAt": "2026-11-19T22:38:32.373Z",
+      "prompts": null,
+      "resourceTemplates": null,
+      "server": {
+        "name": "mcp-action-sandbox",
+        "version": "1.0.0"
+      },
+      "sha256": "5fc83526ea8984682e78d68757b475e1706936f79322f176f3f2aff89c85636a",
+      "source": "stdio",
+      "tools": [
+        {
+          "description": "Empties the request log of this test server. Use it before a new measurement; do not use it while one is running.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          },
+          "name": "clear_log",
+          "sha256": "007991e560381603cd752f938e97efa280a709ebc2e2998c201322a09cdf5809"
+        },
+        {
+          "annotations": {
+            "destructiveHint": false,
+            "openWorldHint": false,
+            "readOnlyHint": true
+          },
+          "description": "Returns the status text of this test server. Use it to see that the server is up; do not use it to change anything.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          },
+          "name": "get_status",
+          "sha256": "b8c926c13dd14fc11c3566a9a2d94bc13f371b5fb02da66111c0ecd19faea2be"
+        },
+        {
+          "annotations": {
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false,
+            "readOnlyHint": false
+          },
+          "description": "Sets the request counter of this test server back to zero. Use it to start a count over; do not use it to read the count.",
+          "inputSchema": {
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          },
+          "name": "reset_counter",
+          "sha256": "3fcf9e2d05ee830391df3883351f540c65a81ff7867f28d972ef8df64319d6bf"
+        }
+      ],
+      "transport": "stdio"
+    }
+  }
+}
